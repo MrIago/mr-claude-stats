@@ -32,12 +32,13 @@ fi
 
 # Se não encontrou, usar cache anterior
 if [ "$TOTAL" -eq 0 ] && [ -f "$CACHE_FILE" ]; then
-  TOTAL=$(cat "$CACHE_FILE" 2>/dev/null || echo 45000)
+  TOTAL=$(cat "$CACHE_FILE" 2>/dev/null || echo 0)
 fi
 
-# Fallback final
+# Se não tem dados, mostrar só o modelo
 if [ "$TOTAL" -eq 0 ]; then
-  TOTAL=45000
+  echo -e "\033[38;5;117m${MODEL}\033[0m"
+  exit 0
 fi
 PERCENT=$((TOTAL * 100 / CONTEXT))
 
