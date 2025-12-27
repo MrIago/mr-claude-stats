@@ -1,4 +1,46 @@
 #!/bin/bash
+# mr-claude-stats - Accurate statusline for Claude Code CLI
+# https://github.com/MrIago/mr-claude-stats
+
+VERSION="1.0.2"
+
+# Handle --help and --version
+if [[ "$1" == "--help" || "$1" == "-h" ]]; then
+  cat << 'EOF'
+mr-claude-stats - The most accurate Claude Code statusline
+
+INSTALL:
+  npm install -g mr-claude-stats
+
+SETUP:
+  Add to ~/.claude/settings.json:
+
+  {
+    "statusLine": {
+      "type": "command",
+      "command": "mr-claude-stats"
+    }
+  }
+
+WHAT IT SHOWS:
+  ████████████████████████░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░
+  Opus 4.5                                     130k/200k (65%)
+
+REQUIREMENTS:
+  - jq (JSON processor)
+  - bash
+
+MORE INFO:
+  https://github.com/MrIago/mr-claude-stats
+EOF
+  exit 0
+fi
+
+if [[ "$1" == "--version" || "$1" == "-v" ]]; then
+  echo "mr-claude-stats v$VERSION"
+  exit 0
+fi
+
 export LC_NUMERIC=C
 input=$(cat)
 
