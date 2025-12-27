@@ -1,0 +1,110 @@
+#!/bin/bash
+export LC_NUMERIC=C
+input=$(cat)
+
+MODEL=$(echo "$input" | jq -r '.model.display_name // "Claude"')
+CONTEXT=$(echo "$input" | jq -r '.context_window.context_window_size // 200000')
+TRANSCRIPT=$(echo "$input" | jq -r '.transcript_path // ""')
+
+# Cache para persistir último valor conhecido
+CACHE_FILE="/tmp/statusline_cache_${SESSION_ID:-default}"
+SESSION_ID=$(echo "$input" | jq -r '.session_id // "default"')
+CACHE_FILE="/tmp/statusline_cache_${SESSION_ID}"
+
+# Ler usage do último request com usage válido no transcript
+TOTAL=0
+if [ -n "$TRANSCRIPT" ] && [ -f "$TRANSCRIPT" ]; then
+  # Buscar último entry que tem usage (ignorar comandos locais sem usage)
+  LAST_USAGE=$(tac "$TRANSCRIPT" 2>/dev/null | jq -s '[.[] | select(.usage != null or .message.usage != null)] | .[0] | .usage // .message.usage' 2>/dev/null)
+  if [ -n "$LAST_USAGE" ] && [ "$LAST_USAGE" != "null" ]; then
+    INPUT_T=$(echo "$LAST_USAGE" | jq -r '.input_tokens // 0')
+    CACHE_CREATE=$(echo "$LAST_USAGE" | jq -r '.cache_creation_input_tokens // 0')
+    CACHE_READ=$(echo "$LAST_USAGE" | jq -r '.cache_read_input_tokens // 0')
+    OUTPUT_T=$(echo "$LAST_USAGE" | jq -r '.output_tokens // 0')
+    # Total = input atual + cache + output + buffer de autocompact (45k)
+    MESSAGES=$((INPUT_T + CACHE_CREATE + CACHE_READ + OUTPUT_T))
+    AUTOCOMPACT_BUFFER=45000
+    TOTAL=$((MESSAGES + AUTOCOMPACT_BUFFER))
+    # Salvar no cache
+    echo "$TOTAL" > "$CACHE_FILE"
+  fi
+fi
+
+# Se não encontrou, usar cache anterior
+if [ "$TOTAL" -eq 0 ] && [ -f "$CACHE_FILE" ]; then
+  TOTAL=$(cat "$CACHE_FILE" 2>/dev/null || echo 45000)
+fi
+
+# Fallback final
+if [ "$TOTAL" -eq 0 ]; then
+  TOTAL=45000
+fi
+PERCENT=$((TOTAL * 100 / CONTEXT))
+
+# Cores ANSI (pastel)
+BLUE='\033[38;5;117m'
+GREEN='\033[38;5;114m'
+YELLOW='\033[38;5;186m'
+ORANGE='\033[38;5;216m'
+RED='\033[38;5;174m'
+GRAY='\033[38;5;242m'
+RESET='\033[0m'
+
+
+# Formatar tokens
+format_tokens() {
+  local n=$1
+  if [ $n -ge 1000 ]; then
+    echo "$((n / 1000))k"
+  else
+    echo "$n"
+  fi
+}
+
+TOTAL_FMT=$(format_tokens $TOTAL)
+CONTEXT_FMT=$(format_tokens $CONTEXT)
+
+# Barra de 60 caracteres com gradiente
+BAR_SIZE=60
+FILLED=$((PERCENT * BAR_SIZE / 100))
+EMPTY=$((BAR_SIZE - FILLED))
+
+# Thresholds para cores (em chars)
+T1=$((BAR_SIZE * 25 / 100))  # 25% = 15 chars
+T2=$((BAR_SIZE * 50 / 100))  # 50% = 30 chars
+T3=$((BAR_SIZE * 75 / 100))  # 75% = 45 chars
+
+BAR=""
+for ((i=0; i<FILLED; i++)); do
+  if [ $i -lt $T1 ]; then
+    BAR+="${GREEN}█"
+  elif [ $i -lt $T2 ]; then
+    BAR+="${YELLOW}█"
+  elif [ $i -lt $T3 ]; then
+    BAR+="${ORANGE}█"
+  else
+    BAR+="${RED}█"
+  fi
+done
+BAR+="${GRAY}"
+for ((i=0; i<EMPTY; i++)); do BAR+="░"; done
+BAR+="${RESET}"
+
+# Cor do texto baseada no percentual
+if [ $PERCENT -lt 25 ]; then
+  TEXT_COLOR=$GREEN
+elif [ $PERCENT -lt 50 ]; then
+  TEXT_COLOR=$YELLOW
+elif [ $PERCENT -lt 75 ]; then
+  TEXT_COLOR=$ORANGE
+else
+  TEXT_COLOR=$RED
+fi
+
+# Info formatada com largura fixa (18 chars total)
+RIGHT=$(printf "%18s" "${TOTAL_FMT}/${CONTEXT_FMT} (${PERCENT}%)")
+
+# Row 1: Barra
+echo -e "$BAR"
+# Row 2: Model (azul) esquerda, tokens (cor) direita
+echo -e "${BLUE}$(printf "%-42s" "$MODEL")${RESET}${TEXT_COLOR}${RIGHT}${RESET}"

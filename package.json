@@ -1,0 +1,25 @@
+{
+  "name": "mr-claude-stats",
+  "version": "1.0.0",
+  "description": "Accurate statusline for Claude Code CLI with colorful progress bar",
+  "bin": {
+    "mr-claude-stats": "./bin/mr-claude-stats"
+  },
+  "keywords": [
+    "claude",
+    "claude-code",
+    "statusline",
+    "cli",
+    "tokens",
+    "context"
+  ],
+  "author": "MrIago",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/MrIago/mr-claude-stats"
+  },
+  "engines": {
+    "node": ">=14"
+  }
+}
