@@ -88,19 +88,17 @@ This matches the official `/context` command output.
 
 ## Requirements
 
-- `jq` (JSON processor)
-- `bash`
+- Node.js 14+ (comes with npm)
 
 ## Compatibility
 
-| OS | Status | Notes |
-|----|--------|-------|
-| Linux | ✅ Works | Native support |
-| macOS | ✅ Works | Uses `tail -r` instead of `tac` |
-| Windows | ⚠️ WSL/Git Bash | Requires bash environment |
+| OS | Status |
+|----|--------|
+| Linux | ✅ Native |
+| macOS | ✅ Native |
+| Windows | ✅ Native |
 
-**macOS**: Install jq with `brew install jq`
-**Windows**: Use WSL or Git Bash, install jq
+**No additional dependencies!** Pure Node.js, no bash or jq needed.
 
 ## License
 

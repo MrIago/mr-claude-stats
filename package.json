@@ -1,9 +1,9 @@
 {
   "name": "mr-claude-stats",
-  "version": "1.0.3",
+  "version": "1.1.0",
   "description": "Accurate statusline for Claude Code CLI with colorful progress bar",
   "bin": {
-    "mr-claude-stats": "./bin/mr-claude-stats"
+    "mr-claude-stats": "./bin/mr-claude-stats.js"
   },
   "keywords": [
     "claude",
