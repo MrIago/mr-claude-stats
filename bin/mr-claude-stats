@@ -57,7 +57,12 @@ CACHE_FILE="/tmp/statusline_cache_${SESSION_ID}"
 TOTAL=0
 if [ -n "$TRANSCRIPT" ] && [ -f "$TRANSCRIPT" ]; then
   # Buscar último entry que tem usage (ignorar comandos locais sem usage)
-  LAST_USAGE=$(tac "$TRANSCRIPT" 2>/dev/null | jq -s '[.[] | select(.usage != null or .message.usage != null)] | .[0] | .usage // .message.usage' 2>/dev/null)
+  # Usar tail -r no Mac, tac no Linux
+  if command -v tac &>/dev/null; then
+    LAST_USAGE=$(tac "$TRANSCRIPT" 2>/dev/null | jq -s '[.[] | select(.usage != null or .message.usage != null)] | .[0] | .usage // .message.usage' 2>/dev/null)
+  else
+    LAST_USAGE=$(tail -r "$TRANSCRIPT" 2>/dev/null | jq -s '[.[] | select(.usage != null or .message.usage != null)] | .[0] | .usage // .message.usage' 2>/dev/null)
+  fi
   if [ -n "$LAST_USAGE" ] && [ "$LAST_USAGE" != "null" ]; then
     INPUT_T=$(echo "$LAST_USAGE" | jq -r '.input_tokens // 0')
     CACHE_CREATE=$(echo "$LAST_USAGE" | jq -r '.cache_creation_input_tokens // 0')

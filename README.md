@@ -91,6 +91,17 @@ This matches the official `/context` command output.
 - `jq` (JSON processor)
 - `bash`
 
+## Compatibility
+
+| OS | Status | Notes |
+|----|--------|-------|
+| Linux | ✅ Works | Native support |
+| macOS | ✅ Works | Uses `tail -r` instead of `tac` |
+| Windows | ⚠️ WSL/Git Bash | Requires bash environment |
+
+**macOS**: Install jq with `brew install jq`
+**Windows**: Use WSL or Git Bash, install jq
+
 ## License
 
 MIT
