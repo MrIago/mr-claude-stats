@@ -3,9 +3,11 @@
 // https://github.com/MrIago/mr-claude-stats
 
 const fs = require('fs');
+const path = require('path');
 const readline = require('readline');
 
-const VERSION = '1.1.0';
+const VERSION = '1.2.0';
+const BAR_SIZE = 45;
 
 // Handle --help and --version
 if (process.argv.includes('--help') || process.argv.includes('-h')) {
@@ -25,8 +27,8 @@ SETUP:
   }
 
 WHAT IT SHOWS:
-  ████████████████████████░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░
-  Opus 4.5                                     130k/200k (65%)
+  ████████████████████████░░░░░░░░░░░░░░░░░░░
+  Opus 4.5 in /lasy          130k/200k (65%)
 
 WORKS ON:
   Linux, macOS, Windows (native!)
@@ -61,7 +63,7 @@ function getColorForPercent(percent) {
   return RED;
 }
 
-function buildProgressBar(percent, size = 60) {
+function buildProgressBar(percent, size = BAR_SIZE) {
   const filled = Math.floor(percent * size / 100);
   const empty = size - filled;
 
@@ -82,7 +84,7 @@ function buildProgressBar(percent, size = 60) {
 
 function getCacheFile(sessionId) {
   const os = require('os');
-  return require('path').join(os.tmpdir(), `statusline_cache_${sessionId || 'default'}`);
+  return path.join(os.tmpdir(), `statusline_cache_${sessionId || 'default'}`);
 }
 
 function readCache(sessionId) {
@@ -121,6 +123,13 @@ function findLastUsage(transcriptPath) {
   return null;
 }
 
+function truncatePath(dirName, maxLen = 10) {
+  if (dirName.length > maxLen) {
+    return dirName.substring(0, 7) + '...';
+  }
+  return dirName;
+}
+
 async function main() {
   // Read JSON from stdin
   const rl = readline.createInterface({ input: process.stdin });
@@ -141,6 +150,11 @@ async function main() {
   const contextSize = input.context_window?.context_window_size || 200000;
   const transcriptPath = input.transcript_path || '';
   const sessionId = input.session_id || 'default';
+  const cwd = input.cwd || process.cwd();
+
+  // Get last directory name and truncate if needed
+  const lastDir = truncatePath(path.basename(cwd));
+  const modelWithPath = `${model} in /${lastDir}`;
 
   // Calculate total tokens
   let total = 0;
@@ -159,9 +173,9 @@ async function main() {
     total = readCache(sessionId);
   }
 
-  // If no data, show only model
+  // If no data, show only model with path
   if (total === 0) {
-    console.log(`${BLUE}${model}${RESET}`);
+    console.log(`${BLUE}${modelWithPath}${RESET}`);
     return;
   }
 
@@ -171,12 +185,15 @@ async function main() {
   // Format output
   const totalFmt = formatTokens(total);
   const contextFmt = formatTokens(contextSize);
-  const info = `${totalFmt}/${contextFmt} (${percent}%)`.padStart(18);
+  const rightInfo = `${totalFmt}/${contextFmt} (${percent}%)`.padStart(18);
+
+  // Left side width = BAR_SIZE - 18 (right info width)
+  const leftWidth = BAR_SIZE - 18;
 
   // Row 1: Progress bar
   console.log(buildProgressBar(percent));
-  // Row 2: Model (left) + tokens (right)
-  console.log(`${BLUE}${model.padEnd(42)}${RESET}${textColor}${info}${RESET}`);
+  // Row 2: Model with path (left) + tokens (right)
+  console.log(`${BLUE}${modelWithPath.padEnd(leftWidth)}${RESET}${textColor}${rightInfo}${RESET}`);
 }
 
 main().catch(() => process.exit(1));
