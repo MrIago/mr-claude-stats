@@ -6,7 +6,7 @@ const fs = require('fs');
 const path = require('path');
 const readline = require('readline');
 
-const VERSION = '1.2.0';
+const VERSION = '1.3.0';
 const BAR_SIZE = 45;
 
 // Handle --help and --version
@@ -165,9 +165,8 @@ async function main() {
     const cacheCreate = usage.cache_creation_input_tokens || 0;
     const cacheRead = usage.cache_read_input_tokens || 0;
     const outputTokens = usage.output_tokens || 0;
-    const autocompactBuffer = 45000;
 
-    total = inputTokens + cacheCreate + cacheRead + outputTokens + autocompactBuffer;
+    total = inputTokens + cacheCreate + cacheRead + outputTokens;
     writeCache(sessionId, total);
   } else {
     total = readCache(sessionId);
