@@ -6,7 +6,7 @@ const fs = require('fs');
 const path = require('path');
 const readline = require('readline');
 
-const VERSION = '1.3.0';
+const VERSION = '1.4.0';
 const BAR_SIZE = 45;
 
 // Handle --help and --version
@@ -103,23 +103,11 @@ function writeCache(sessionId, value) {
   } catch (e) {}
 }
 
-function findLastUsage(transcriptPath) {
-  if (!transcriptPath || !fs.existsSync(transcriptPath)) return null;
-
-  try {
-    const content = fs.readFileSync(transcriptPath, 'utf8');
-    const lines = content.trim().split('\n').reverse();
-
-    for (const line of lines) {
-      try {
-        const entry = JSON.parse(line);
-        const usage = entry.usage || (entry.message && entry.message.usage);
-        if (usage && usage.input_tokens !== undefined) {
-          return usage;
-        }
-      } catch (e) {}
-    }
-  } catch (e) {}
+function getUsageFromInput(input) {
+  const currentUsage = input.context_window?.current_usage;
+  if (currentUsage && currentUsage.input_tokens !== undefined) {
+    return currentUsage;
+  }
   return null;
 }
 
@@ -148,7 +136,6 @@ async function main() {
 
   const model = input.model?.display_name || 'Claude';
   const contextSize = input.context_window?.context_window_size || 200000;
-  const transcriptPath = input.transcript_path || '';
   const sessionId = input.session_id || 'default';
   const cwd = input.cwd || process.cwd();
 
@@ -156,9 +143,9 @@ async function main() {
   const lastDir = truncatePath(path.basename(cwd));
   const modelWithPath = `${model} in /${lastDir}`;
 
-  // Calculate total tokens
+  // Calculate total tokens from context_window.current_usage
   let total = 0;
-  const usage = findLastUsage(transcriptPath);
+  const usage = getUsageFromInput(input);
 
   if (usage) {
     const inputTokens = usage.input_tokens || 0;
