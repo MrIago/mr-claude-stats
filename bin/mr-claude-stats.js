@@ -6,8 +6,9 @@ const fs = require('fs');
 const path = require('path');
 const readline = require('readline');
 
-const VERSION = '1.4.0';
+const VERSION = '1.5.0';
 const BAR_SIZE = 45;
+const AUTOCOMPACT_BUFFER = 0.225; // 22.5% reserved for autocompact
 
 // Handle --help and --version
 if (process.argv.includes('--help') || process.argv.includes('-h')) {
@@ -64,14 +65,26 @@ function getColorForPercent(percent) {
 }
 
 function buildProgressBar(percent, size = BAR_SIZE) {
-  const filled = Math.floor(percent * size / 100);
-  const empty = size - filled;
+  // Buffer blocks at the start (reserved for autocompact)
+  const bufferBlocks = Math.floor(size * AUTOCOMPACT_BUFFER);
+  const usableSize = size - bufferBlocks;
 
-  const t1 = Math.floor(size * 0.25);
-  const t2 = Math.floor(size * 0.50);
-  const t3 = Math.floor(size * 0.75);
+  // Calculate filled blocks in the usable area
+  // percent is relative to total context, need to adjust for usable space
+  const usablePercent = Math.min(100, percent / (1 - AUTOCOMPACT_BUFFER));
+  const filled = Math.floor(usablePercent * usableSize / 100);
+  const empty = usableSize - filled;
 
-  let bar = '';
+  // Thresholds for color changes (relative to usable area)
+  const t1 = Math.floor(usableSize * 0.25);
+  const t2 = Math.floor(usableSize * 0.50);
+  const t3 = Math.floor(usableSize * 0.75);
+
+  // Build buffer section (dark gray, at the start)
+  const DARK_GRAY = '\x1b[38;5;238m';
+  let bar = DARK_GRAY + '▓'.repeat(bufferBlocks);
+
+  // Build usage section
   for (let i = 0; i < filled; i++) {
     if (i < t1) bar += GREEN + '█';
     else if (i < t2) bar += YELLOW + '█';
