@@ -6,7 +6,7 @@ const fs = require('fs');
 const path = require('path');
 const readline = require('readline');
 
-const VERSION = '1.5.0';
+const VERSION = '1.5.1';
 const BAR_SIZE = 45;
 const AUTOCOMPACT_BUFFER = 0.225; // 22.5% reserved for autocompact
 
@@ -80,9 +80,9 @@ function buildProgressBar(percent, size = BAR_SIZE) {
   const t2 = Math.floor(usableSize * 0.50);
   const t3 = Math.floor(usableSize * 0.75);
 
-  // Build buffer section (dark gray, at the start)
-  const DARK_GRAY = '\x1b[38;5;238m';
-  let bar = DARK_GRAY + '▓'.repeat(bufferBlocks);
+  // Build buffer section (dark green, at the start)
+  const DARK_GREEN = '\x1b[38;5;22m';
+  let bar = DARK_GREEN + '█'.repeat(bufferBlocks);
 
   // Build usage section
   for (let i = 0; i < filled; i++) {
