@@ -6,7 +6,7 @@ const fs = require('fs');
 const path = require('path');
 const readline = require('readline');
 
-const VERSION = '1.5.1';
+const VERSION = '1.5.2';
 const BAR_SIZE = 45;
 const AUTOCOMPACT_BUFFER = 0.225; // 22.5% reserved for autocompact
 
@@ -65,12 +65,11 @@ function getColorForPercent(percent) {
 }
 
 function buildProgressBar(percent, size = BAR_SIZE) {
-  // Buffer blocks at the start (reserved for autocompact)
+  // Buffer blocks at the end (reserved for autocompact)
   const bufferBlocks = Math.floor(size * AUTOCOMPACT_BUFFER);
   const usableSize = size - bufferBlocks;
 
   // Calculate filled blocks in the usable area
-  // percent is relative to total context, need to adjust for usable space
   const usablePercent = Math.min(100, percent / (1 - AUTOCOMPACT_BUFFER));
   const filled = Math.floor(usablePercent * usableSize / 100);
   const empty = usableSize - filled;
@@ -80,18 +79,22 @@ function buildProgressBar(percent, size = BAR_SIZE) {
   const t2 = Math.floor(usableSize * 0.50);
   const t3 = Math.floor(usableSize * 0.75);
 
-  // Build buffer section (dark green, at the start)
-  const DARK_GREEN = '\x1b[38;5;22m';
-  let bar = DARK_GREEN + '█'.repeat(bufferBlocks);
-
-  // Build usage section
+  // Build usage section first
+  let bar = '';
   for (let i = 0; i < filled; i++) {
     if (i < t1) bar += GREEN + '█';
     else if (i < t2) bar += YELLOW + '█';
     else if (i < t3) bar += ORANGE + '█';
     else bar += RED + '█';
   }
-  bar += GRAY + '░'.repeat(empty) + RESET;
+
+  // Free space (available)
+  bar += GRAY + '░'.repeat(empty);
+
+  // Buffer section at the end (reserved - darker texture)
+  const DARK_GRAY = '\x1b[38;5;238m';
+  bar += DARK_GRAY + '▒'.repeat(bufferBlocks) + RESET;
+
   return bar;
 }
 
