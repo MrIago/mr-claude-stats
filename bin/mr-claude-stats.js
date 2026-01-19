@@ -6,7 +6,7 @@ const fs = require('fs');
 const path = require('path');
 const readline = require('readline');
 
-const VERSION = '1.6.1';
+const VERSION = '1.6.2';
 const BAR_SIZE = 45;
 const AUTOCOMPACT_BUFFER = 0.225; // 22.5% reserved for autocompact
 
@@ -97,12 +97,12 @@ function buildProgressBar(percent, size = BAR_SIZE) {
   // Free space in usable area
   bar += GRAY + '░'.repeat(emptyInUsable);
 
-  // Buffer section - same ▒ texture, different colors
+  // Buffer section - different textures: ▓ (denser) for used, ▒ (lighter) for empty
   if (filledInBuffer > 0) {
-    bar += VIOLET + '▒'.repeat(filledInBuffer); // Violet when used
+    bar += VIOLET + '▓'.repeat(filledInBuffer);
   }
   if (emptyInBuffer > 0) {
-    bar += DARK_GRAY + '▒'.repeat(emptyInBuffer); // Dark gray when empty
+    bar += DARK_GRAY + '▒'.repeat(emptyInBuffer);
   }
 
   bar += RESET;
