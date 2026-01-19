@@ -6,7 +6,7 @@ const fs = require('fs');
 const path = require('path');
 const readline = require('readline');
 
-const VERSION = '1.5.2';
+const VERSION = '1.6.0';
 const BAR_SIZE = 45;
 const AUTOCOMPACT_BUFFER = 0.225; // 22.5% reserved for autocompact
 
@@ -50,7 +50,9 @@ const GREEN = '\x1b[38;5;114m';
 const YELLOW = '\x1b[38;5;186m';
 const ORANGE = '\x1b[38;5;216m';
 const RED = '\x1b[38;5;174m';
+const VIOLET = '\x1b[38;5;183m'; // For buffer zone overflow
 const GRAY = '\x1b[38;5;242m';
+const DARK_GRAY = '\x1b[38;5;238m';
 const RESET = '\x1b[0m';
 
 function formatTokens(n) {
@@ -65,36 +67,47 @@ function getColorForPercent(percent) {
 }
 
 function buildProgressBar(percent, size = BAR_SIZE) {
-  // Buffer blocks at the end (reserved for autocompact)
+  // Buffer zone at the end (reserved for autocompact)
   const bufferBlocks = Math.floor(size * AUTOCOMPACT_BUFFER);
   const usableSize = size - bufferBlocks;
 
-  // Calculate filled blocks in the usable area
-  const usablePercent = Math.min(100, percent / (1 - AUTOCOMPACT_BUFFER));
-  const filled = Math.floor(usablePercent * usableSize / 100);
-  const empty = usableSize - filled;
+  // Calculate how much of the bar is filled based on actual percent
+  const totalFilled = Math.floor(percent * size / 100);
+
+  // Split between usable area and buffer area
+  const filledInUsable = Math.min(totalFilled, usableSize);
+  const filledInBuffer = Math.max(0, totalFilled - usableSize);
+  const emptyInUsable = usableSize - filledInUsable;
+  const emptyInBuffer = bufferBlocks - filledInBuffer;
 
   // Thresholds for color changes (relative to usable area)
   const t1 = Math.floor(usableSize * 0.25);
   const t2 = Math.floor(usableSize * 0.50);
   const t3 = Math.floor(usableSize * 0.75);
 
-  // Build usage section first
+  // Build usable section
   let bar = '';
-  for (let i = 0; i < filled; i++) {
+  for (let i = 0; i < filledInUsable; i++) {
     if (i < t1) bar += GREEN + '█';
     else if (i < t2) bar += YELLOW + '█';
     else if (i < t3) bar += ORANGE + '█';
     else bar += RED + '█';
   }
 
-  // Free space (available)
-  bar += GRAY + '░'.repeat(empty);
+  // Free space in usable area
+  bar += GRAY + '░'.repeat(emptyInUsable);
 
-  // Buffer section at the end (reserved - darker texture)
-  const DARK_GRAY = '\x1b[38;5;238m';
-  bar += DARK_GRAY + '▒'.repeat(bufferBlocks) + RESET;
+  // Buffer section - filled part in violet with different texture
+  if (filledInBuffer > 0) {
+    bar += VIOLET + '▓'.repeat(filledInBuffer);
+  }
 
+  // Buffer section - empty part (reserved - darker texture)
+  if (emptyInBuffer > 0) {
+    bar += DARK_GRAY + '▒'.repeat(emptyInBuffer);
+  }
+
+  bar += RESET;
   return bar;
 }
 
@@ -159,29 +172,38 @@ async function main() {
   const lastDir = truncatePath(path.basename(cwd));
   const modelWithPath = `${model} in /${lastDir}`;
 
-  // Calculate total tokens from context_window.current_usage
+  // Use pre-calculated used_percentage from Claude Code (most accurate per official docs)
+  // Fallback to manual calculation WITHOUT output_tokens
+  let percent = input.context_window?.used_percentage;
   let total = 0;
-  const usage = getUsageFromInput(input);
 
-  if (usage) {
-    const inputTokens = usage.input_tokens || 0;
-    const cacheCreate = usage.cache_creation_input_tokens || 0;
-    const cacheRead = usage.cache_read_input_tokens || 0;
-    const outputTokens = usage.output_tokens || 0;
-
-    total = inputTokens + cacheCreate + cacheRead + outputTokens;
+  if (percent !== undefined && percent !== null) {
+    // Use pre-calculated percentage - most accurate
+    percent = Math.floor(percent);
+    // Estimate total for display (reverse calculation)
+    total = Math.floor(percent * contextSize / 100);
     writeCache(sessionId, total);
   } else {
-    total = readCache(sessionId);
+    // Fallback: calculate from current_usage WITHOUT output_tokens (per official docs)
+    const usage = getUsageFromInput(input);
+    if (usage) {
+      const inputTokens = usage.input_tokens || 0;
+      const cacheCreate = usage.cache_creation_input_tokens || 0;
+      const cacheRead = usage.cache_read_input_tokens || 0;
+      // NOTE: output_tokens NOT included per official Claude Code docs
+      total = inputTokens + cacheCreate + cacheRead;
+      writeCache(sessionId, total);
+    } else {
+      total = readCache(sessionId);
+    }
+    percent = Math.floor(total * 100 / contextSize);
   }
 
   // If no data, show only model with path
-  if (total === 0) {
+  if (total === 0 && percent === 0) {
     console.log(`${BLUE}${modelWithPath}${RESET}`);
     return;
   }
-
-  const percent = Math.floor(total * 100 / contextSize);
   const textColor = getColorForPercent(percent);
 
   // Format output
